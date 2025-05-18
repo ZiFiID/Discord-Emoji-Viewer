@@ -159,7 +159,7 @@
     background-color: var(--background-secondary);
     border-radius: 10px;
     padding: 10px;
-    cursor: default;
+    cursor: pointer;
     user-select: none;
     display: flex;
     flex-direction: column;
@@ -327,13 +327,19 @@
         emojiUrlBox.className = 'emoji-url-box';
         emojiUrlBox.textContent = emojiImg.src;
 
-        // Select all on click/tap
-        emojiUrlBox.addEventListener('click', () => {
-          const range = document.createRange();
-          range.selectNodeContents(emojiUrlBox);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
+        // Hapus event lama, ganti dengan klik copy otomatis
+        emojiCard.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(emojiImg.src);
+            // Feedback warna hijau sesaat
+            const originalBg = emojiCard.style.backgroundColor;
+            emojiCard.style.backgroundColor = '#43b581';
+            setTimeout(() => {
+              emojiCard.style.backgroundColor = originalBg || 'var(--background-secondary)';
+            }, 800);
+          } catch (err) {
+            alert('Failed to copy emoji URL to clipboard.');
+          }
         });
 
         emojiCard.appendChild(emojiImg);
