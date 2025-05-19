@@ -412,7 +412,7 @@
         card.classList.add("emoji-card");
 
         // Image URL logic based on animated or not
-        const extension = emoji.animated ? "gif" : "webp";
+        const extension = emoji.animated ? "gif" : "png";
         const emojiUrl = `https://cdn.discordapp.com/emojis/${emoji.id}.${extension}?size=48`;
 
         const img = document.createElement("img");
