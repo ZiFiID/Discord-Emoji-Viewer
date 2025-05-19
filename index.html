@@ -1,357 +1,609 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Discord Emoji Viewer</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Discord Emoji Viewer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap');
 
-  :root {
-    --background: #36393f;
-    --background-secondary: #2f3136;
-    --background-tertiary: #202225;
-    --text-primary: #dcddde;
-    --text-muted: #72767d;
-    --accent: #5865f2;
-    --scrollbar-bg: #202225;
-    --scrollbar-thumb: #4e5d94;
-  }
+    :root {
+      --background: #36393f;
+      --background-secondary: #2f3136;
+      --background-tertiary: #202225;
+      --text-primary: #dcddde;
+      --text-muted: #72767d;
+      --accent: #5865f2;
+      --scrollbar-bg: #202225;
+      --scrollbar-thumb: #4e5d94;
+      --copy-success-bg: #43b581;
+    }
 
-  * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-  body, html {
-    margin: 0; padding: 0; height: 100%;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--background);
-    color: var(--text-primary);
-    user-select: none;
-    overflow: hidden;
-  }
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--background);
+      color: var(--text-primary);
+      user-select: none;
+      overflow: hidden;
+    }
 
-  #app {
-    display: flex;
-    height: 100vh;
-    width: 100vw;
-  }
+    #app {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
 
-  #sidebar {
-    width: 280px;
-    background-color: var(--background-secondary);
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid #202225;
-  }
+    /* Sidebar */
+    #sidebar {
+      width: 300px;
+      background-color: var(--background-secondary);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #202225;
+    }
 
-  #sidebarHeader {
-    padding: 20px 16px;
-    font-weight: 700;
-    font-size: 22px;
-    border-bottom: 1px solid #202225;
-    user-select: none;
-    color: var(--accent);
-  }
+    #sidebarHeader {
+      padding: 20px 16px;
+      font-weight: 700;
+      font-size: 22px;
+      border-bottom: 1px solid #202225;
+      color: var(--accent);
+      user-select: none;
+    }
 
-  #tokenSection {
-    padding: 12px 16px;
-    border-bottom: 1px solid #202225;
-  }
+    #tokenSection {
+      padding: 16px;
+      border-bottom: 1px solid #202225;
+    }
 
-  #tokenInput {
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 14px;
-    border-radius: 4px;
-    border: none;
-    background-color: var(--background-tertiary);
-    color: var(--text-primary);
-    outline-offset: 0;
-    user-select: text;
-  }
+    #tokenInput {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: none;
+      background-color: var(--background-tertiary);
+      color: var(--text-primary);
+      outline-offset: 0;
+      user-select: text;
+      transition: outline 0.15s ease;
+    }
 
-  #tokenInput::placeholder {
-    color: var(--text-muted);
-  }
+    #tokenInput::placeholder {
+      color: var(--text-muted);
+    }
 
-  #tokenInput:focus {
-    outline: 2px solid var(--accent);
-  }
+    #tokenInput:focus {
+      outline: 2px solid var(--accent);
+    }
 
-  #loadButton {
-    margin-top: 10px;
-    width: 100%;
-    padding: 10px 0;
-    background-color: var(--accent);
-    border: none;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 15px;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    user-select: none;
-  }
+    #loadButton {
+      margin-top: 12px;
+      width: 100%;
+      padding: 12px 0;
+      background-color: var(--accent);
+      border: none;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 15px;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      user-select: none;
+    }
 
-  #loadButton:hover {
-    background-color: #4752c4;
-  }
+    #loadButton:hover:not(:disabled) {
+      background-color: #4752c4;
+    }
 
-  #serverList {
-    flex-grow: 1;
-    overflow-y: auto;
-    margin-top: 12px;
-  }
+    #loadButton:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
 
-  #serverList::-webkit-scrollbar,
-  #mainContent::-webkit-scrollbar {
-    width: 8px;
-  }
+    #serverSearchContainer {
+      padding: 12px 16px;
+      border-bottom: 1px solid #202225;
+      background-color: var(--background-tertiary);
+      display: none;
+    }
 
-  #serverList::-webkit-scrollbar-track,
-  #mainContent::-webkit-scrollbar-track {
-    background: var(--background-secondary);
-  }
+    #serverSearchInput {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background-color: var(--background);
+      color: var(--text-primary);
+      outline-offset: 0;
+      user-select: text;
+      transition: border-color 0.2s ease;
+    }
 
-  #serverList::-webkit-scrollbar-thumb,
-  #mainContent::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-  }
+    #serverSearchInput::placeholder {
+      color: var(--text-muted);
+    }
 
-  .server-item {
-    padding: 12px 16px;
-    cursor: pointer;
-    border-radius: 6px;
-    margin: 4px 12px;
-    font-weight: 600;
-    font-size: 15px;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    user-select: none;
-    transition: background-color 0.15s ease;
-  }
+    #serverSearchInput:focus {
+      border-color: var(--accent);
+    }
 
-  .server-item:hover {
-    background-color: #4f53a6;
-  }
+    #serverList {
+      flex-grow: 1;
+      overflow-y: auto;
+      user-select: none;
+    }
 
-  .server-item.active {
-    background-color: var(--accent);
-    color: white;
-  }
+    #serverList::-webkit-scrollbar {
+      width: 8px;
+    }
 
-  #mainContent {
-    flex-grow: 1;
-    background-color: var(--background);
-    overflow-y: auto;
-    padding: 20px;
-  }
+    #serverList::-webkit-scrollbar-track {
+      background: var(--background-secondary);
+    }
 
-  #emojiGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill,minmax(80px,1fr));
-    gap: 18px;
-  }
+    #serverList::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 4px;
+    }
 
-  .emoji-card {
-    background-color: var(--background-secondary);
-    border-radius: 10px;
-    padding: 10px;
-    cursor: pointer;
-    user-select: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    transition: background-color 0.15s ease;
-  }
+    .server-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 4px 12px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background-color 0.15s ease;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-  .emoji-card:hover {
-    background-color: #4e509b;
-  }
+    .server-item:hover {
+      background-color: #4f53a6;
+    }
 
-  .emoji-image {
-    width: 64px;
-    height: 64px;
-    user-select: none;
-    border-radius: 8px;
-  }
+    .server-item.active {
+      background-color: var(--accent);
+      color: white;
+    }
 
-  .emoji-name {
-    margin-top: 6px;
-    font-size: 14px;
-    color: var(--text-primary);
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-  }
+    .server-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background-color: #40444b;
+    }
 
-  .emoji-url-box {
-    margin-top: 6px;
-    background-color: var(--background-tertiary);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 11px;
-    color: var(--text-muted);
-    word-break: break-all;
-    user-select: text;
-    cursor: text;
-    max-width: 100%;
-    text-align: center;
-  }
+    /* Main content */
+    #mainContent {
+      flex-grow: 1;
+      background-color: var(--background);
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
 
-  #infoMsg {
-    color: var(--text-muted);
-    font-style: italic;
-    margin-top: 40px;
-    text-align: center;
-  }
-</style>
+    #searchContainer {
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    #searchInput {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background-color: var(--background-tertiary);
+      color: var(--text-primary);
+      outline-offset: 0;
+      user-select: text;
+      transition: border-color 0.2s ease;
+    }
+
+    #searchInput::placeholder {
+      color: var(--text-muted);
+    }
+
+    #searchInput:focus {
+      border-color: var(--accent);
+    }
+
+    #emojiGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill,minmax(90px,1fr));
+      gap: 18px;
+      flex-grow: 1;
+      overflow-y: auto;
+      user-select: none;
+    }
+
+    #emojiGrid::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #emojiGrid::-webkit-scrollbar-track {
+      background: var(--background);
+    }
+
+    #emojiGrid::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 4px;
+    }
+
+    .emoji-card {
+      background-color: var(--background-secondary);
+      border-radius: 10px;
+      padding: 10px 6px 10px 6px;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: background-color 0.15s ease;
+      position: relative;
+      gap: 4px;
+      min-height: 110px;
+      justify-content: center;
+    }
+
+    .emoji-card:hover {
+      background-color: #4e509b;
+    }
+
+    .emoji-image {
+      width: 48px;
+      height: 48px;
+      user-select: none;
+      border-radius: 8px;
+      pointer-events: none;
+      object-fit: contain;
+    }
+
+    .emoji-name {
+      font-size: 13px;
+      color: var(--text-primary);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      user-select: text;
+      padding: 0 5px;
+      line-height: 1.2;
+    }
+
+    .copy-tooltip {
+      position: absolute;
+      bottom: 8px;
+      background-color: var(--copy-success-bg);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      user-select: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    .copy-tooltip.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #infoMsg {
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 40px;
+      text-align: center;
+      flex-shrink: 0;
+      user-select: none;
+    }
+  </style>
 </head>
 <body>
   <div id="app">
     <div id="sidebar">
       <div id="sidebarHeader">Emoji Viewer</div>
       <div id="tokenSection">
-        <input type="text" id="tokenInput" placeholder="Enter Discord token..." autocomplete="off" spellcheck="false" />
-        <button id="loadButton">Load Servers</button>
+        <input
+          type="text"
+          id="tokenInput"
+          placeholder="Enter Discord token..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="loadButton">Load</button>
+      </div>
+      <div id="serverSearchContainer">
+        <input
+          type="text"
+          id="serverSearchInput"
+          placeholder="Search servers..."
+          autocomplete="off"
+          spellcheck="false"
+        />
       </div>
       <div id="serverList"></div>
     </div>
     <div id="mainContent">
-      <div id="infoMsg">Enter your Discord token and click "Load Servers" to start.</div>
-      <div id="emojiGrid" style="display:none;"></div>
+      <div id="searchContainer">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search emojis..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div id="emojiGrid"></div>
+      <div id="infoMsg">Please load a token to start.</div>
     </div>
   </div>
 
-<script>
-  const tokenInput = document.getElementById('tokenInput');
-  const loadButton = document.getElementById('loadButton');
-  const serverList = document.getElementById('serverList');
-  const emojiGrid = document.getElementById('emojiGrid');
-  const infoMsg = document.getElementById('infoMsg');
+  <script>
+    (() => {
+      const tokenInput = document.getElementById("tokenInput");
+      const loadButton = document.getElementById("loadButton");
+      const serverList = document.getElementById("serverList");
+      const serverSearchContainer = document.getElementById("serverSearchContainer");
+      const serverSearchInput = document.getElementById("serverSearchInput");
+      const mainContent = document.getElementById("mainContent");
+      const searchContainer = document.getElementById("searchContainer");
+      const searchInput = document.getElementById("searchInput");
+      const emojiGrid = document.getElementById("emojiGrid");
+      const infoMsg = document.getElementById("infoMsg");
 
-  let currentToken = '';
-  let guilds = [];
-  let activeGuildId = null;
+      let userGuilds = [];
+      let filteredGuilds = [];
+      let emojisData = [];
+      let selectedGuildId = null;
 
-  loadButton.addEventListener('click', () => {
-    const token = tokenInput.value.trim();
-    if (!token) {
-      alert('Please enter a Discord token.');
-      return;
-    }
-    currentToken = token;
-    loadGuilds();
-  });
+      const API_BASE = "https://discord.com/api/v10";
 
-  async function loadGuilds() {
-    serverList.innerHTML = '';
-    emojiGrid.style.display = 'none';
-    infoMsg.textContent = 'Loading servers...';
-
-    try {
-      const res = await fetch('https://discord.com/api/v9/users/@me/guilds', {
-        headers: { Authorization: currentToken }
-      });
-      if (!res.ok) throw new Error('Invalid token or network error');
-      guilds = await res.json();
-
-      if (!guilds.length) {
-        infoMsg.textContent = 'No servers found.';
-        return;
+      function setLoading(isLoading) {
+        loadButton.disabled = isLoading;
+        loadButton.textContent = isLoading ? "Loading..." : "Load";
       }
 
-      infoMsg.textContent = '';
-      guilds.forEach(guild => {
-        const el = document.createElement('div');
-        el.className = 'server-item';
-        el.textContent = guild.name;
-        el.dataset.guildId = guild.id;
-        el.title = guild.name;
-        el.addEventListener('click', () => {
-          if (activeGuildId === guild.id) return;
-          setActiveGuild(guild.id);
+      function showInfo(message) {
+        infoMsg.textContent = message;
+        infoMsg.style.display = "block";
+      }
+
+      function hideInfo() {
+        infoMsg.style.display = "none";
+      }
+
+      function copyToClipboard(text, tooltipElement) {
+        navigator.clipboard.writeText(text).then(() => {
+          tooltipElement.classList.add("visible");
+          setTimeout(() => {
+            tooltipElement.classList.remove("visible");
+          }, 1500);
         });
-        serverList.appendChild(el);
-      });
-
-      setActiveGuild(guilds[0].id);
-
-    } catch (e) {
-      infoMsg.textContent = 'Error loading servers: ' + e.message;
-    }
-  }
-
-  async function setActiveGuild(guildId) {
-    activeGuildId = guildId;
-    [...serverList.children].forEach(item => {
-      item.classList.toggle('active', item.dataset.guildId === guildId);
-    });
-
-    emojiGrid.innerHTML = '';
-    emojiGrid.style.display = 'none';
-    infoMsg.textContent = 'Loading emojis...';
-
-    try {
-      const res = await fetch(`https://discord.com/api/v9/guilds/${guildId}/emojis`, {
-        headers: { Authorization: currentToken }
-      });
-      if (!res.ok) throw new Error('Failed to load emojis');
-
-      const emojis = await res.json();
-      if (!emojis.length) {
-        infoMsg.textContent = 'No emojis found.';
-        return;
       }
 
-      emojiGrid.style.display = 'grid';
-      infoMsg.textContent = '';
+      function createEmojiCard(emoji) {
+        const card = document.createElement("div");
+        card.classList.add("emoji-card");
 
-      emojis.forEach(emoji => {
-        const emojiCard = document.createElement('div');
-        emojiCard.className = 'emoji-card';
+        // Image URL logic based on animated or not
+        const extension = emoji.animated ? "gif" : "webp";
+        const emojiUrl = `https://cdn.discordapp.com/emojis/${emoji.id}.${extension}?size=48`;
 
-        const emojiImg = document.createElement('img');
-        emojiImg.className = 'emoji-image';
-        emojiImg.src = `https://cdn.discordapp.com/emojis/${emoji.id}.${emoji.animated ? 'gif' : 'webp'}?size=48`;
+        const img = document.createElement("img");
+        img.classList.add("emoji-image");
+        img.src = emojiUrl;
+        img.alt = emoji.name;
 
-        const emojiName = document.createElement('div');
-        emojiName.className = 'emoji-name';
-        emojiName.textContent = `:${emoji.name}:`;
+        const name = document.createElement("div");
+        name.classList.add("emoji-name");
+        name.textContent = emoji.name;
 
-        const emojiUrlBox = document.createElement('div');
-        emojiUrlBox.className = 'emoji-url-box';
-        emojiUrlBox.textContent = emojiImg.src;
+        const tooltip = document.createElement("div");
+        tooltip.classList.add("copy-tooltip");
+        tooltip.textContent = "Copied!";
 
-        // Hapus event lama, ganti dengan klik copy otomatis
-        emojiCard.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(emojiImg.src);
-            // Feedback warna hijau sesaat
-            const originalBg = emojiCard.style.backgroundColor;
-            emojiCard.style.backgroundColor = '#43b581';
-            setTimeout(() => {
-              emojiCard.style.backgroundColor = originalBg || 'var(--background-secondary)';
-            }, 800);
-          } catch (err) {
-            alert('Failed to copy emoji URL to clipboard.');
+        card.appendChild(img);
+        card.appendChild(name);
+        card.appendChild(tooltip);
+
+        card.addEventListener("click", () => {
+          copyToClipboard(emojiUrl, tooltip);
+        });
+
+        return card;
+      }
+
+      function renderEmojis(emojis) {
+        emojiGrid.innerHTML = "";
+        if (emojis.length === 0) {
+          showInfo("No emojis found.");
+          return;
+        }
+        hideInfo();
+        emojis.forEach((emoji) => {
+          const card = createEmojiCard(emoji);
+          emojiGrid.appendChild(card);
+        });
+      }
+
+      function filterEmojis(query) {
+        const lowerQuery = query.toLowerCase();
+        const filtered = emojisData.filter((e) =>
+          e.name.toLowerCase().includes(lowerQuery)
+        );
+        renderEmojis(filtered);
+      }
+
+      function filterGuilds(query) {
+        const lowerQuery = query.toLowerCase();
+        filteredGuilds = userGuilds.filter((g) =>
+          g.name.toLowerCase().includes(lowerQuery)
+        );
+        renderGuilds(filteredGuilds);
+      }
+
+      function renderGuilds(guilds) {
+        serverList.innerHTML = "";
+        if (guilds.length === 0) {
+          const noGuild = document.createElement("div");
+          noGuild.textContent = "No servers found.";
+          noGuild.style.padding = "12px 16px";
+          noGuild.style.color = "var(--text-muted)";
+          noGuild.style.userSelect = "none";
+          serverList.appendChild(noGuild);
+          return;
+        }
+        guilds.forEach((guild) => {
+          const guildItem = document.createElement("div");
+          guildItem.classList.add("server-item");
+          if (guild.id === selectedGuildId) {
+            guildItem.classList.add("active");
           }
-        });
 
-        emojiCard.appendChild(emojiImg);
-        emojiCard.appendChild(emojiName);
-        emojiCard.appendChild(emojiUrlBox);
-        emojiGrid.appendChild(emojiCard);
+          const icon = document.createElement("img");
+          icon.classList.add("server-icon");
+          if (guild.icon) {
+            icon.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`;
+          } else {
+            // fallback: use a placeholder colored circle with initials or default icon
+            icon.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+          }
+          icon.alt = guild.name;
+
+          const nameSpan = document.createElement("span");
+          nameSpan.textContent = guild.name;
+
+          guildItem.appendChild(icon);
+          guildItem.appendChild(nameSpan);
+
+          guildItem.addEventListener("click", () => {
+            if (guild.id !== selectedGuildId) {
+              selectedGuildId = guild.id;
+              renderGuilds(filteredGuilds.length > 0 ? filteredGuilds : userGuilds);
+              loadEmojisForGuild(guild.id);
+            }
+          });
+
+          serverList.appendChild(guildItem);
+        });
+      }
+
+      async function loadEmojisForGuild(guildId) {
+        emojiGrid.innerHTML = "";
+        showInfo("Loading emojis...");
+        searchContainer.style.display = "none";
+
+        try {
+          const res = await fetch(`${API_BASE}/guilds/${guildId}/emojis`, {
+            headers: {
+              Authorization: tokenInput.value.trim(),
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error(`Failed to load emojis: ${res.status} ${res.statusText}`);
+          }
+
+          emojisData = await res.json();
+
+          if (emojisData.length === 0) {
+            showInfo("No emojis found in this server.");
+            searchContainer.style.display = "none";
+          } else {
+            hideInfo();
+            searchContainer.style.display = "block";
+            renderEmojis(emojisData);
+          }
+        } catch (err) {
+          showInfo(`Error: ${err.message}`);
+          emojiGrid.innerHTML = "";
+          searchContainer.style.display = "none";
+        }
+      }
+
+      async function loadUserGuilds() {
+        setLoading(true);
+        serverList.innerHTML = "";
+        emojiGrid.innerHTML = "";
+        searchContainer.style.display = "none";
+        serverSearchContainer.style.display = "none";
+        showInfo("Loading servers...");
+
+        try {
+          const res = await fetch(`${API_BASE}/users/@me/guilds`, {
+            headers: {
+              Authorization: tokenInput.value.trim(),
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error(`Failed to load servers: ${res.status} ${res.statusText}`);
+          }
+
+          userGuilds = await res.json();
+          filteredGuilds = [...userGuilds];
+          selectedGuildId = null;
+
+          if (userGuilds.length === 0) {
+            showInfo("No servers found in your account.");
+          } else {
+            hideInfo();
+            serverSearchContainer.style.display = "block";
+            renderGuilds(userGuilds);
+          }
+        } catch (err) {
+          showInfo(`Error: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      loadButton.addEventListener("click", () => {
+        const token = tokenInput.value.trim();
+        if (!token) {
+          alert("Please enter a Discord token.");
+          return;
+        }
+        loadUserGuilds();
       });
 
-    } catch (e) {
-      infoMsg.textContent = 'Error loading emojis: ' + e.message;
-    }
-  }
-</script>
+      serverSearchInput.addEventListener("input", () => {
+        const query = serverSearchInput.value.trim();
+        filterGuilds(query);
+      });
+
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim();
+        filterEmojis(query);
+      });
+    })();
+  </script>
 </body>
 </html>
+        serverList
