@@ -60,6 +60,9 @@
     #tokenSection {
       padding: 16px;
       border-bottom: 1px solid #202225;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     #tokenInput {
@@ -84,7 +87,6 @@
     }
 
     #loadButton {
-      margin-top: 12px;
       width: 100%;
       padding: 12px 0;
       background-color: var(--accent);
@@ -105,6 +107,25 @@
     #loadButton:disabled {
       opacity: 0.5;
       cursor: default;
+    }
+
+    #usePreviousTokenBtn {
+      width: 100%;
+      padding: 10px 0;
+      background-color: #4a4c59;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease;
+      display: none; /* awalnya sembunyi */
+    }
+
+    #usePreviousTokenBtn:hover {
+      background-color: #5a5c69;
     }
 
     #serverSearchContainer {
@@ -281,62 +302,45 @@
     .emoji-name {
       font-size: 13px;
       color: var(--text-primary);
-      text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 100%;
       user-select: text;
-      padding: 0 5px;
-      line-height: 1.2;
+      max-width: 100%;
+      text-align: center;
     }
 
-    .copy-tooltip {
-      position: absolute;
-      bottom: 8px;
-      background-color: var(--copy-success-bg);
+    /* Tooltip */
+    #tooltip {
+      position: fixed;
+      background: var(--copy-success-bg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
       color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      user-select: none;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.3s ease;
-      left: 50%;
-      transform: translateX(-50%);
-      white-space: nowrap;
-      z-index: 10;
-    }
-
-    .copy-tooltip.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    #infoMsg {
-      color: var(--text-muted);
-      font-style: italic;
-      margin-top: 40px;
-      text-align: center;
-      flex-shrink: 0;
       user-select: none;
+      transition: opacity 0.2s ease;
+      z-index: 9999;
     }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="sidebar">
-      <div id="sidebarHeader">Emoji Viewer</div>
+      <div id="sidebarHeader">Discord Emoji Viewer</div>
       <div id="tokenSection">
         <input
           type="password"
           id="tokenInput"
-          placeholder="Enter Discord token..."
+          placeholder="Enter your Discord token"
           autocomplete="off"
           spellcheck="false"
         />
         <button id="loadButton">Load</button>
+        <button id="usePreviousTokenBtn" title="Use previously saved token">Use Previous Token</button>
       </div>
       <div id="serverSearchContainer">
         <input
@@ -360,250 +364,272 @@
         />
       </div>
       <div id="emojiGrid"></div>
-      <div id="infoMsg">Please load a token to start.</div>
     </div>
   </div>
+  <div id="tooltip">Copied!</div>
 
   <script>
     (() => {
-      const tokenInput = document.getElementById("tokenInput");
-      const loadButton = document.getElementById("loadButton");
-      const serverList = document.getElementById("serverList");
-      const serverSearchContainer = document.getElementById("serverSearchContainer");
-      const serverSearchInput = document.getElementById("serverSearchInput");
-      const mainContent = document.getElementById("mainContent");
-      const searchContainer = document.getElementById("searchContainer");
-      const searchInput = document.getElementById("searchInput");
-      const emojiGrid = document.getElementById("emojiGrid");
-      const infoMsg = document.getElementById("infoMsg");
+      const tokenInput = document.getElementById('tokenInput');
+      const loadButton = document.getElementById('loadButton');
+      const usePreviousTokenBtn = document.getElementById('usePreviousTokenBtn');
+      const serverList = document.getElementById('serverList');
+      const serverSearchContainer = document.getElementById('serverSearchContainer');
+      const serverSearchInput = document.getElementById('serverSearchInput');
+      const mainContent = document.getElementById('mainContent');
+      const searchContainer = document.getElementById('searchContainer');
+      const searchInput = document.getElementById('searchInput');
+      const emojiGrid = document.getElementById('emojiGrid');
+      const tooltip = document.getElementById('tooltip');
 
-      let userGuilds = [];
+      let currentToken = '';
+      let guilds = [];
+      let emojis = [];
       let filteredGuilds = [];
-      let emojisData = [];
+      let filteredEmojis = [];
       let selectedGuildId = null;
 
-      const API_BASE = "https://discord.com/api/v10";
-
-      function setLoading(isLoading) {
-        loadButton.disabled = isLoading;
-        loadButton.textContent = isLoading ? "Loading..." : "Load";
+      // Show or hide Use Previous Token button based on localStorage
+      function updateUsePreviousTokenButton() {
+        const savedToken = localStorage.getItem('discordToken');
+        if (savedToken) {
+          usePreviousTokenBtn.style.display = 'block';
+        } else {
+          usePreviousTokenBtn.style.display = 'none';
+        }
       }
 
-      function showInfo(message) {
-        infoMsg.textContent = message;
-        infoMsg.style.display = "block";
+      updateUsePreviousTokenButton();
+
+      // Show tooltip at mouse position
+      function showTooltip(x, y) {
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+        tooltip.style.opacity = '1';
+        setTimeout(() => {
+          tooltip.style.opacity = '0';
+        }, 1000);
       }
 
-      function hideInfo() {
-        infoMsg.style.display = "none";
-      }
-
-      function copyToClipboard(text, tooltipElement) {
+      // Copy text to clipboard
+      function copyToClipboard(text, x, y) {
         navigator.clipboard.writeText(text).then(() => {
-          tooltipElement.classList.add("visible");
-          setTimeout(() => {
-            tooltipElement.classList.remove("visible");
-          }, 1500);
+          showTooltip(x, y);
+        }).catch(() => {
+          alert('Failed to copy to clipboard');
         });
       }
 
-      function createEmojiCard(emoji) {
-        const card = document.createElement("div");
-        card.classList.add("emoji-card");
-
-        // Image URL logic based on animated or not
-        const extension = emoji.animated ? "gif" : "png";
-        const emojiUrl = `https://cdn.discordapp.com/emojis/${emoji.id}.${extension}?size=48`;
-
-        const img = document.createElement("img");
-        img.classList.add("emoji-image");
-        img.src = emojiUrl;
-        img.alt = emoji.name;
-
-        const name = document.createElement("div");
-        name.classList.add("emoji-name");
-        name.textContent = emoji.name;
-
-        const tooltip = document.createElement("div");
-        tooltip.classList.add("copy-tooltip");
-        tooltip.textContent = "Copied!";
-
-        card.appendChild(img);
-        card.appendChild(name);
-        card.appendChild(tooltip);
-
-        card.addEventListener("click", () => {
-          copyToClipboard(emojiUrl, tooltip);
-        });
-
-        return card;
-      }
-
-      function renderEmojis(emojis) {
-        emojiGrid.innerHTML = "";
-        if (emojis.length === 0) {
-          showInfo("No emojis found.");
+      // Render server list
+      function renderServers(list) {
+        serverList.innerHTML = '';
+        if (list.length === 0) {
+          const noServerDiv = document.createElement('div');
+          noServerDiv.textContent = 'No servers found.';
+          noServerDiv.style.padding = '20px';
+          noServerDiv.style.color = 'var(--text-muted)';
+          serverList.appendChild(noServerDiv);
           return;
         }
-        hideInfo();
-        emojis.forEach((emoji) => {
-          const card = createEmojiCard(emoji);
+        list.forEach(guild => {
+          const div = document.createElement('div');
+          div.className = 'server-item';
+          if (guild.id === selectedGuildId) div.classList.add('active');
+
+          const img = document.createElement('img');
+          img.className = 'server-icon';
+          img.src = guild.iconURL || 'https://cdn-icons-png.flaticon.com/512/187/187210.png';
+          img.alt = guild.name;
+          div.appendChild(img);
+
+          const span = document.createElement('span');
+          span.textContent = guild.name;
+          div.appendChild(span);
+
+          div.addEventListener('click', () => {
+            selectedGuildId = guild.id;
+            renderServers(filteredGuilds);
+            loadEmojis(guild.id);
+          });
+
+          serverList.appendChild(div);
+        });
+      }
+
+      // Render emojis grid
+      function renderEmojis(list) {
+        emojiGrid.innerHTML = '';
+        if (list.length === 0) {
+          const noEmojiDiv = document.createElement('div');
+          noEmojiDiv.textContent = 'No emojis found.';
+          noEmojiDiv.style.padding = '20px';
+          noEmojiDiv.style.color = 'var(--text-muted)';
+          emojiGrid.appendChild(noEmojiDiv);
+          return;
+        }
+        list.forEach(emoji => {
+          const card = document.createElement('div');
+          card.className = 'emoji-card';
+          card.title = emoji.name;
+
+          const img = document.createElement('img');
+          img.className = 'emoji-image';
+          img.src = emoji.url;
+          img.alt = emoji.name;
+
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'emoji-name';
+          nameSpan.textContent = emoji.name;
+
+          card.appendChild(img);
+          card.appendChild(nameSpan);
+
+          card.addEventListener('click', e => {
+            copyToClipboard(emoji.url, e.pageX, e.pageY);
+          });
+
           emojiGrid.appendChild(card);
         });
       }
 
-      function filterEmojis(query) {
-        const lowerQuery = query.toLowerCase();
-        const filtered = emojisData.filter((e) =>
-          e.name.toLowerCase().includes(lowerQuery)
-        );
-        renderEmojis(filtered);
+      // Filter servers by search input
+      function filterServers() {
+        const searchTerm = serverSearchInput.value.toLowerCase();
+        filteredGuilds = guilds.filter(g => g.name.toLowerCase().includes(searchTerm));
+        renderServers(filteredGuilds);
       }
 
-      function filterGuilds(query) {
-        const lowerQuery = query.toLowerCase();
-        filteredGuilds = userGuilds.filter((g) =>
-          g.name.toLowerCase().includes(lowerQuery)
-        );
-        renderGuilds(filteredGuilds);
+      // Filter emojis by search input
+      function filterEmojis() {
+        const searchTerm = searchInput.value.toLowerCase();
+        filteredEmojis = emojis.filter(e => e.name.toLowerCase().includes(searchTerm));
+        renderEmojis(filteredEmojis);
       }
 
-      function renderGuilds(guilds) {
-        serverList.innerHTML = "";
-        if (guilds.length === 0) {
-          const noGuild = document.createElement("div");
-          noGuild.textContent = "No servers found.";
-          noGuild.style.padding = "12px 16px";
-          noGuild.style.color = "var(--text-muted)";
-          noGuild.style.userSelect = "none";
-          serverList.appendChild(noGuild);
-          return;
-        }
-        guilds.forEach((guild) => {
-          const guildItem = document.createElement("div");
-          guildItem.classList.add("server-item");
-          if (guild.id === selectedGuildId) {
-            guildItem.classList.add("active");
-          }
+      // Load emojis for selected server
+      function loadEmojis(guildId) {
+        const guild = guilds.find(g => g.id === guildId);
+        if (!guild) return;
+        emojis = guild.emojis.map(e => ({
+          id: e.id,
+          name: e.name,
+          url: `https://cdn.discordapp.com/emojis/${e.id}.${e.animated ? 'gif' : 'png'}?v=1`
+        }));
 
-          const icon = document.createElement("img");
-          icon.classList.add("server-icon");
-          if (guild.icon) {
-            icon.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`;
-          } else {
-            // fallback: use a placeholder colored circle with initials or default icon
-            icon.src = "https://cdn.discordapp.com/embed/avatars/0.png";
-          }
-          icon.alt = guild.name;
+        filteredEmojis = emojis;
+        searchContainer.style.display = 'block';
+        searchInput.value = '';
+        filterEmojis();
+      }
 
-          const nameSpan = document.createElement("span");
-          nameSpan.textContent = guild.name;
+      // Fetch user guilds from Discord API
+      async function fetchGuilds(token) {
+        try {
+          const res = await fetch('https://discord.com/api/v9/users/@me/guilds', {
+            headers: {
+              Authorization: token
+            }
+          });
+          if (!res.ok) throw new Error('Invalid token or failed to fetch guilds');
+          const data = await res.json();
 
-          guildItem.appendChild(icon);
-          guildItem.appendChild(nameSpan);
+          // Only keep guilds the user has permission to view emojis
+          guilds = data.map(g => ({
+            id: g.id,
+            name: g.name,
+            iconURL: g.icon
+              ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`
+              : null,
+            emojis: [] // will fill later
+          }));
 
-          guildItem.addEventListener("click", () => {
-            if (guild.id !== selectedGuildId) {
-              selectedGuildId = guild.id;
-              renderGuilds(filteredGuilds.length > 0 ? filteredGuilds : userGuilds);
-              loadEmojisForGuild(guild.id);
+          // Fetch emojis for each guild (parallel)
+          const emojisPromises = guilds.map(async guild => {
+            try {
+              const emojiRes = await fetch(`https://discord.com/api/v9/guilds/${guild.id}/emojis`, {
+                headers: { Authorization: token }
+              });
+              if (!emojiRes.ok) return [];
+              return await emojiRes.json();
+            } catch {
+              return [];
             }
           });
 
-          serverList.appendChild(guildItem);
-        });
-      }
+          const allEmojis = await Promise.all(emojisPromises);
 
-      async function loadEmojisForGuild(guildId) {
-        emojiGrid.innerHTML = "";
-        showInfo("Loading emojis...");
-        searchContainer.style.display = "none";
-
-        try {
-          const res = await fetch(`${API_BASE}/guilds/${guildId}/emojis`, {
-            headers: {
-              Authorization: tokenInput.value.trim(),
-            },
+          allEmojis.forEach((emojiList, idx) => {
+            guilds[idx].emojis = emojiList;
           });
 
-          if (!res.ok) {
-            throw new Error(`Failed to load emojis: ${res.status} ${res.statusText}`);
+          filteredGuilds = guilds;
+          renderServers(filteredGuilds);
+
+          serverSearchContainer.style.display = 'block';
+          mainContent.style.display = 'flex';
+
+          // Select first guild by default if available
+          if (guilds.length > 0) {
+            selectedGuildId = guilds[0].id;
+            renderServers(filteredGuilds);
+            loadEmojis(selectedGuildId);
           }
 
-          emojisData = await res.json();
+          searchInput.value = '';
+          searchInput.focus();
 
-          if (emojisData.length === 0) {
-            showInfo("No emojis found in this server.");
-            searchContainer.style.display = "none";
-          } else {
-            hideInfo();
-            searchContainer.style.display = "block";
-            renderEmojis(emojisData);
-          }
+          return true;
         } catch (err) {
-          showInfo(`Error: ${err.message}`);
-          emojiGrid.innerHTML = "";
-          searchContainer.style.display = "none";
+          alert(err.message);
+          return false;
         }
       }
 
-      async function loadUserGuilds() {
-        setLoading(true);
-        serverList.innerHTML = "";
-        emojiGrid.innerHTML = "";
-        searchContainer.style.display = "none";
-        serverSearchContainer.style.display = "none";
-        showInfo("Loading servers...");
-
-        try {
-          const res = await fetch(`${API_BASE}/users/@me/guilds`, {
-            headers: {
-              Authorization: tokenInput.value.trim(),
-            },
-          });
-
-          if (!res.ok) {
-            throw new Error(`Failed to load servers: ${res.status} ${res.statusText}`);
-          }
-
-          userGuilds = await res.json();
-          filteredGuilds = [...userGuilds];
-          selectedGuildId = null;
-
-          if (userGuilds.length === 0) {
-            showInfo("No servers found in your account.");
-          } else {
-            hideInfo();
-            serverSearchContainer.style.display = "block";
-            renderGuilds(userGuilds);
-          }
-        } catch (err) {
-          showInfo(`Error: ${err.message}`);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      loadButton.addEventListener("click", () => {
+      // On load button click
+      loadButton.addEventListener('click', async () => {
         const token = tokenInput.value.trim();
         if (!token) {
-          alert("Please enter a Discord token.");
+          alert('Please enter a token.');
           return;
         }
-        loadUserGuilds();
+        loadButton.disabled = true;
+        loadButton.textContent = 'Loading...';
+
+        const success = await fetchGuilds(token);
+        if (success) {
+          currentToken = token;
+          // Save token to localStorage
+          localStorage.setItem('discordToken', token);
+          updateUsePreviousTokenButton();
+        }
+
+        loadButton.disabled = false;
+        loadButton.textContent = 'Load';
       });
 
-      serverSearchInput.addEventListener("input", () => {
-        const query = serverSearchInput.value.trim();
-        filterGuilds(query);
+      // Use Previous Token button click
+      usePreviousTokenBtn.addEventListener('click', () => {
+        const savedToken = localStorage.getItem('discordToken');
+        if (savedToken) {
+          tokenInput.value = savedToken;
+          tokenInput.focus();
+        }
       });
 
-      searchInput.addEventListener("input", () => {
-        const query = searchInput.value.trim();
-        filterEmojis(query);
+      // Search server input event
+      serverSearchInput.addEventListener('input', filterServers);
+
+      // Search emoji input event
+      searchInput.addEventListener('input', filterEmojis);
+
+      // Disable enter form submission on tokenInput
+      tokenInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          loadButton.click();
+        }
       });
     })();
   </script>
 </body>
 </html>
-        serverList
